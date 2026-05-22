@@ -52,3 +52,18 @@ def bloquear_api():
 # Executa o servidor na porta 5000
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
+
+@app.route('/liberar_rua', methods=['POST'])
+def liberar_api():
+    dados = request.json
+    origem = dados.get('origem')
+    destino = dados.get('destino')
+    
+    meu_mapa.liberar_aresta(origem, destino)
+    return jsonify({"sucesso": True, "mensagem": f"Rua entre {origem} e {destino} liberada!"}), 200
+
+@app.route('/mapa', methods=['GET'])
+def obter_mapa():
+    # Retorna todo o dicionário do grafo.
+    # Assim o React sabe exatamente quais ruas existem e quais estão bloqueadas.
+    return jsonify(meu_mapa.grafo), 200

@@ -40,6 +40,12 @@ class MapaGrafo:
             # Se for mão dupla, aplica o bloqueio no sentido inverso também.
             if bidirecional:
                 self.grafo[destino][origem]['bloqueado'] = True
+    
+    def liberar_aresta(self, origem, destino, bidirecional=True):
+        if destino in self.grafo.get(origem, {}):
+            self.grafo[origem][destino]['bloqueado'] = False
+            if bidirecional:
+                self.grafo[destino][origem]['bloqueado'] = False
 
 # ==========================================
 # 2. ALGORITMO DE BUSCA: DIJKSTRA
