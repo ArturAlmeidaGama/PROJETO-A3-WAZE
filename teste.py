@@ -58,28 +58,41 @@ def simular_interativo():
             try:
                 valor = int(texto)
                 if minimo is not None and valor < minimo:
-                    print(f'Digite um número maior ou igual a {minimo}.')
+                    print(f'❌ ERRO: Digite um número maior ou igual a {minimo}.')
                     continue
                 if maximo is not None and valor > maximo:
-                    print(f'O mapa possui apenas {maximo} rua(s). Digite um valor até {maximo}.')
+                    print(f'❌ ERRO: O mapa possui apenas {maximo} rua(s). Digite um valor até {maximo}.')
                     continue
                 return valor
             except ValueError:
-                print('Valor inválido. Digite apenas números inteiros.')
+                print('❌ ERRO: Valor inválido. Digite apenas números inteiros.')
 
-    def ler_float(pergunta):
+    def ler_float(pergunta, estrito_positivo=False):
         while True:
             texto = input(pergunta).strip().replace(',', '.')
             try:
-                return float(texto)
+                valor = float(texto)
+                # NOVO: Impede valores 0 ou negativos se exigido
+                if estrito_positivo and valor <= 0:
+                    print('❌ ERRO: O valor deve ser estritamente maior que zero.')
+                    continue
+                return valor
             except ValueError:
-                print('Valor numérico inválido. Tente novamente.')
+                print('❌ ERRO: Valor numérico inválido. Tente novamente.')
 
     def ler_sim_nao(pergunta, padrao='s'):
         resposta = input(pergunta).strip().lower()
         if not resposta:
             resposta = padrao
         return resposta in ('s', 'sim')
+
+    # NOVO: Função específica para ler e validar um nó
+    def ler_no(pergunta):
+        while True:
+            no = input(pergunta).strip().upper()
+            if len(no) == 1 and no.isalpha():
+                return no
+            print('❌ ERRO: O nó deve ser exatamente UMA letra (Ex: A, B, C).')
 
     print('==========================================')
     print('🧭 SIMULADOR DE ROTAS (MODO INTERATIVO)')
@@ -98,10 +111,22 @@ def simular_interativo():
 
         for i in range(1, n + 1):
             print(f"\nAresta {i}/{n}")
-            origem = input('Origem: ').strip().upper()
-            destino = input('Destino: ').strip().upper()
-            distancia = ler_float('Qual a distância da aresta? ')
-            tempo = ler_float('Qual o tempo da aresta? ')
+            
+            origem = ler_no('Origem: ')
+            
+            # NOVO: Laço para garantir que o destino é válido (diferente da origem e não duplicado)
+            while True:
+                destino = ler_no('Destino: ')
+                
+                if origem == destino:
+                    print('❌ ERRO: O destino não pode ser igual à origem. Escolha outra letra.')
+                elif destino in meu_mapa.grafo.get(origem, {}):
+                    print(f'❌ ERRO: A rua entre {origem} e {destino} já existe no mapa! Escolha outra conexão.')
+                else:
+                    break # Sai do laço, pois o destino é válido
+                    
+            distancia = ler_float('Qual a distância da aresta? ', estrito_positivo=True)
+            tempo = ler_float('Qual o tempo da aresta? ', estrito_positivo=True)
             bidirecional = ler_sim_nao('Bidirecional? (s/n): ', padrao='s')
 
             meu_mapa.adicionar_aresta(
@@ -129,19 +154,20 @@ def simular_interativo():
         bloqueios_realizados = 0
         while bloqueios_realizados < m:
             print(f"\nBloqueio {bloqueios_realizados + 1}/{m}")
-            o = input('Origem da rua: ').strip().upper()
-            d = input('Destino da rua: ').strip().upper()
+            o = ler_no('Origem da rua: ')
+            d = ler_no('Destino da rua: ')
             
-            # Validação 1: Verifica se a rua existe
+            if o == d:
+                print('❌ ERRO: Origem e destino não podem ser iguais.')
+                continue
+
             if o not in meu_mapa.grafo or d not in meu_mapa.grafo.get(o, {}):
-                print(f'❌ ERRO: A rua entre {o} e {d} não existe no mapa! Tente novamente com ruas válidas.')
+                print(f'❌ ERRO: A rua entre {o} e {d} não existe no mapa! Tente novamente.')
                 continue 
             
-            # --- NOVA VALIDAÇÃO 2: Não deixa bloquear o que já está bloqueado ---
             if meu_mapa.grafo[o][d].get('bloqueado', False):
                 print(f'⚠️ AVISO: A rua entre {o} e {d} JÁ ESTÁ bloqueada! Escolha outro trecho.')
-                continue # Volta para o início do loop sem gastar a contagem de bloqueios
-            # ---------------------------------------------------------------------
+                continue 
             
             meu_mapa.bloquear_aresta(o, d)
             print(f'🚧 Rua entre {o} e {d} bloqueada.')
@@ -152,31 +178,34 @@ def simular_interativo():
     # ---------------------------------------------------------
     print('\nPasso 3: calcular rotas')
     while True:
-        inicio = input('Nó de início: ').strip().upper()
-        fim = input('Nó de destino: ').strip().upper()
+        inicio = ler_no('Nó de início: ')
+        fim = ler_no('Nó de destino: ')
         
-        while True:
-            criterio_input = input("Critério ('D' para distância ou 'T' para tempo): ").strip().lower()
-            
-            if criterio_input in ('d', 'distancia'):
-                criterio = 'distancia'
-                break
-            elif criterio_input in ('t', 'tempo'):
-                criterio = 'tempo'
-                break
-            else:
-                print("❌ ERRO: Critério inválido. Digite apenas 'D' para distância ou 'T' para tempo.")
-
-        if inicio not in meu_mapa.grafo or fim not in meu_mapa.grafo:
-            print('❌ ERRO: O nó de início ou destino não existe no grafo. Verifique as letras.\n')
+        if inicio == fim:
+            print('⚠️ AVISO: Você já está no seu destino! Nenhum cálculo necessário.\n')
         else:
-            rota, custo = dijkstra(meu_mapa, inicio=inicio, fim=fim, criterio=criterio)
-            
-            if rota:
-                print(f"📍 Melhor rota: {' -> '.join(rota)}")
-                print(f"📏 Custo ({criterio}): {custo:.2f}\n")
+            while True:
+                criterio_input = input("Critério ('D' para distância ou 'T' para tempo): ").strip().lower()
+                
+                if criterio_input in ('d', 'distancia'):
+                    criterio = 'distancia'
+                    break
+                elif criterio_input in ('t', 'tempo'):
+                    criterio = 'tempo'
+                    break
+                else:
+                    print("❌ ERRO: Critério inválido. Digite apenas 'D' para distância ou 'T' para tempo.")
+
+            if inicio not in meu_mapa.grafo or fim not in meu_mapa.grafo:
+                print('❌ ERRO: O nó de início ou destino não existe no grafo. Verifique as letras.\n')
             else:
-                print('🚧 ROTA IMPOSSÍVEL: Todas as ruas de acesso estão bloqueadas ou não há conexão!\n')
+                rota, custo = dijkstra(meu_mapa, inicio=inicio, fim=fim, criterio=criterio)
+                
+                if rota:
+                    print(f"📍 Melhor rota: {' -> '.join(rota)}")
+                    print(f"📏 Custo ({criterio}): {custo:.2f}\n")
+                else:
+                    print('🚧 ROTA IMPOSSÍVEL: Todas as ruas de acesso estão bloqueadas ou não há conexão!\n')
 
         if not ler_sim_nao('Deseja calcular outra rota? (s/n): ', padrao='n'):
             print('Encerrando simulação.')
