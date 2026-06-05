@@ -132,9 +132,16 @@ def simular_interativo():
             o = input('Origem da rua: ').strip().upper()
             d = input('Destino da rua: ').strip().upper()
             
+            # Validação 1: Verifica se a rua existe
             if o not in meu_mapa.grafo or d not in meu_mapa.grafo.get(o, {}):
                 print(f'❌ ERRO: A rua entre {o} e {d} não existe no mapa! Tente novamente com ruas válidas.')
                 continue 
+            
+            # --- NOVA VALIDAÇÃO 2: Não deixa bloquear o que já está bloqueado ---
+            if meu_mapa.grafo[o][d].get('bloqueado', False):
+                print(f'⚠️ AVISO: A rua entre {o} e {d} JÁ ESTÁ bloqueada! Escolha outro trecho.')
+                continue # Volta para o início do loop sem gastar a contagem de bloqueios
+            # ---------------------------------------------------------------------
             
             meu_mapa.bloquear_aresta(o, d)
             print(f'🚧 Rua entre {o} e {d} bloqueada.')
@@ -148,24 +155,17 @@ def simular_interativo():
         inicio = input('Nó de início: ').strip().upper()
         fim = input('Nó de destino: ').strip().upper()
         
-        # --- NOVO SISTEMA DE CRITÉRIO (Mais inteligente e à prova de falhas) ---
         while True:
             criterio_input = input("Critério ('D' para distância ou 'T' para tempo): ").strip().lower()
             
-            # Aceita 'd' ou 'distancia'
             if criterio_input in ('d', 'distancia'):
                 criterio = 'distancia'
-                break # Sai do loop do critério com sucesso
-                
-            # Aceita 't' ou 'tempo'
+                break
             elif criterio_input in ('t', 'tempo'):
                 criterio = 'tempo'
-                break # Sai do loop do critério com sucesso
-                
-            # Se não for nenhum dos dois, xinga (com educação) e pergunta de novo
+                break
             else:
                 print("❌ ERRO: Critério inválido. Digite apenas 'D' para distância ou 'T' para tempo.")
-        # -----------------------------------------------------------------------
 
         if inicio not in meu_mapa.grafo or fim not in meu_mapa.grafo:
             print('❌ ERRO: O nó de início ou destino não existe no grafo. Verifique as letras.\n')
@@ -174,7 +174,6 @@ def simular_interativo():
             
             if rota:
                 print(f"📍 Melhor rota: {' -> '.join(rota)}")
-                # A formatação com :.2f garante que fique bonito (ex: 8.00 em vez de 8.0)
                 print(f"📏 Custo ({criterio}): {custo:.2f}\n")
             else:
                 print('🚧 ROTA IMPOSSÍVEL: Todas as ruas de acesso estão bloqueadas ou não há conexão!\n')
